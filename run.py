@@ -8,8 +8,8 @@ if __name__ == "__main__":
     print(f"   🔧 Modalità debug: {settings.debug}")
     print(f"   📊 Livello log: {settings.log_level}")
     print(f"   🔗 Prefisso API: {settings.api_prefix}")
-    print(f"   🌐 Server: http://localhost:8000")
-    print(f"   📚 Documentazione: http://localhost:8000/docs")
+    print(f"   🌐 Server: http://localhost:{settings.app_port}")
+    print(f"   📚 Documentazione: http://localhost:{settings.app_port}/docs")
     print("")
 
     uvicorn.run(

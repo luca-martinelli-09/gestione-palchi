@@ -46,14 +46,14 @@ async def lifespan(app: FastAPI):
     logger.info("🔄 Arresto Gestione Palchi API...")
 
 
-# Create FastAPI app with optimized configuration
+# Create FastAPI app
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
-    description="Optimized API for managing municipal stages organized by Pro Loco association",
-    docs_url="/docs" if settings.debug else None,
-    redoc_url="/redoc" if settings.debug else None,
-    openapi_url="/openapi.json" if settings.debug else None,
+    description="API for managing municipal stages organized by Pro Loco association",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
     lifespan=lifespan,
 )
 
