@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     # App settings
     app_name: str = "Gestione Palchi API"
     app_version: str = "1.0.0"
+    app_port: int = Field(default=8000, description="Application port")
     debug: bool = Field(default=False, description="Enable debug mode")
     environment: str = Field(
         default="production", description="Application environment"
