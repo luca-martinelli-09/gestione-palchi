@@ -11,6 +11,7 @@ class Association(Base):
     name = Column(String, nullable=False, index=True)
     contact_person = Column(String, nullable=True)
     tax_code = Column(String, nullable=True)
+    iban = Column(String, nullable=True)
     headquarters = Column(String, nullable=True)
 
     volunteers = relationship(
