@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="it" data-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestione Palchi - Pro Loco</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+    <!-- Alpine -->
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="/js/app.js"></script>
+
+    <!-- Font & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap"
+        rel="stylesheet">
+    <style>
+        .material-symbols-outlined {
+            font-size: 20px;
+            font-variation-settings:
+                'FILL' 0,
+                'wght' 400,
+                'GRAD' 0,
+                'opsz' 18
+        }
+    </style>
+
+    <style type="text/tailwindcss">
+        @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+        @theme {
+            /* light theme */
+            --color-surface: var(--color-zinc-50);
+            --color-surface-alt: var(--color-zinc-100);
+            --color-on-surface: var(--color-neutral-600);
+            --color-on-surface-strong: var(--color-neutral-900);
+            --color-primary: var(--color-sky-700);
+            --color-on-primary: var(--color-white);
+            --color-secondary: var(--color-black);
+            --color-on-secondary: var(--color-white);
+            --color-outline: var(--color-zinc-300);
+            --color-outline-strong: var(--color-zinc-500);
+
+            /* dark theme */
+            --color-surface-dark: var(--color-zinc-900);
+            --color-surface-dark-alt: var(--color-zinc-800);
+            --color-on-surface-dark: var(--color-zinc-200);
+            --color-on-surface-dark-strong: var(--color-zinc-50);
+            --color-primary-dark: var(--color-sky-600);
+            --color-on-primary-dark: var(--color-white);
+            --color-secondary-dark: var(--color-white);
+            --color-on-secondary-dark: var(--color-black);
+            --color-outline-dark: var(--color-zinc-700);
+            --color-outline-dark-strong: var(--color-zinc-500);
+
+            /* shared colors */
+            --color-info: var(--color-sky-700);
+            --color-on-info: var(--color-slate-100);
+            --color-success: var(--color-green-700);
+            --color-on-success: var(--color-white);
+            --color-warning: var(--color-amber-600);
+            --color-on-warning: var(--color-amber-50);
+            --color-danger: var(--color-red-700);
+            --color-on-danger: var(--color-slate-100);
+
+            /* border radius */
+            --radius-radius: var(--radius-sm);
+        }  
+    </style>
+</head>
+
+<body class="min-h-screen scroll-on-lg bg-surface dark:bg-surface-dark" x-data="app" x-init="init()">
+    <!-- Loading Overlay -->
+    <div x-show="loading" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+        class="fixed z-50 inset-0 bg-black/20 backdrop-blur-md flex items-center justify-center" role="dialog"
+        aria-labelledby="loading-text">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"
+            class="size-7 fill-on-surface motion-safe:animate-spin dark:fill-on-surface-dark">
+            <path d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z" opacity=".25" />
+            <path
+                d="M10.14,1.16a11,11,0,0,0-9,8.92A1.59,1.59,0,0,0,2.46,12,1.52,1.52,0,0,0,4.11,10.7a8,8,0,0,1,6.66-6.61A1.42,1.42,0,0,0,12,2.69h0A1.57,1.57,0,0,0,10.14,1.16Z" />
+        </svg>
+        <span id="loading-text" class="sr-only">Loading</span>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div x-data="{
+        notifications: [],
+        displayDuration: 8000,
+        soundEffect: false,
+
+        addNotification({ variant = 'info', sender = null, title = null, message = null}) {
+            const id = Date.now()
+            const notification = { id, variant, sender, title, message }
+
+            // Keep only the most recent 20 notifications
+            if (this.notifications.length >= 20) {
+                this.notifications.splice(0, this.notifications.length - 19)
+            }
+
+            // Add the new notification to the notifications stack
+            this.notifications.push(notification)
+
+            if (this.soundEffect) {
+                // Play the notification sound
+                const notificationSound = new Audio('https://res.cloudinary.com/ds8pgw1pf/video/upload/v1728571480/penguinui/component-assets/sounds/ding.mp3')
+                notificationSound.play().catch((error) => {
+                    console.error('Error playing the sound:', error)
+                })
+            }
+        },
+        removeNotification(id) {
+            setTimeout(() => {
+                this.notifications = this.notifications.filter(
+                    (notification) => notification.id !== id,
+                )
+            }, 400);
+        },
+    }" x-on:notify.window="addNotification({
+            variant: $event.detail.variant,
+            sender: $event.detail.sender,
+            title: $event.detail.title,
+            message: $event.detail.message,
+        })">
+
+        <div x-on:mouseenter="$dispatch('pause-auto-dismiss')" x-on:mouseleave="$dispatch('resume-auto-dismiss')"
+            class="group pointer-events-none fixed inset-x-8 top-0 z-99 flex max-w-full flex-col gap-2 bg-transparent px-6 py-6 md:bottom-0 md:left-[unset] md:right-0 md:top-[unset] md:max-w-sm">
+            <template x-for="(notification, index) in notifications" x-bind:key="notification.id">
+                <!-- root div holds all of the notifications  -->
+                <div>
+                    <!-- Info Notification  -->
+                    <template x-if="notification.variant === 'info'">
+                        <div x-data="{ isVisible: false, timeout: null }" x-cloak x-show="isVisible"
+                            class="pointer-events-auto relative rounded-radius border border-info bg-surface text-on-surface dark:bg-surface-dark dark:text-on-surface-dark"
+                            role="alert" x-on:pause-auto-dismiss.window="clearTimeout(timeout)"
+                            x-on:resume-auto-dismiss.window=" timeout = setTimeout(() => {(isVisible = false), removeNotification(notification.id) }, displayDuration)"
+                            x-init="$nextTick(() => { isVisible = true }), (timeout = setTimeout(() => { isVisible = false, removeNotification(notification.id)}, displayDuration))"
+                            x-transition:enter="transition duration-300 ease-out" x-transition:enter-end="translate-y-0"
+                            x-transition:enter-start="translate-y-8"
+                            x-transition:leave="transition duration-300 ease-in"
+                            x-transition:leave-end="-translate-x-24 opacity-0 md:translate-x-24"
+                            x-transition:leave-start="translate-x-0 opacity-100">
+                            <div
+                                class="flex w-full items-center gap-2.5 bg-info/10 rounded-radius p-4 transition-all duration-300">
+
+                                <!-- Title & Message -->
+                                <div class="flex flex-col gap-2">
+                                    <h3 x-cloak x-show="notification.title" class="text-sm font-semibold text-info"
+                                        x-text="notification.title"></h3>
+                                    <p x-cloak x-show="notification.message" class="text-pretty text-sm"
+                                        x-text="notification.message"></p>
+                                </div>
+
+                                <!--Dismiss Button -->
+                                <button type="button" class="ml-auto" aria-label="dismiss notification"
+                                    x-on:click="(isVisible = false), removeNotification(notification.id)">
+                                    <svg xmlns="http://www.w3.org/2000/svg viewBox=" 0 0 24 24 stroke="currentColor"
+                                        fill="none" stroke-width="2" class="size-5 shrink-0" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Success Notification  -->
+                    <template x-if="notification.variant === 'success'">
+                        <div x-data="{ isVisible: false, timeout: null }" x-cloak x-show="isVisible"
+                            class="pointer-events-auto relative rounded-radius border border-success bg-surface text-on-surface dark:bg-surface-dark dark:text-on-surface-dark"
+                            role="alert" x-on:pause-auto-dismiss.window="clearTimeout(timeout)"
+                            x-on:resume-auto-dismiss.window=" timeout = setTimeout(() => {(isVisible = false), removeNotification(notification.id) }, displayDuration)"
+                            x-init="$nextTick(() => { isVisible = true }), (timeout = setTimeout(() => { isVisible = false, removeNotification(notification.id)}, displayDuration))"
+                            x-transition:enter="transition duration-300 ease-out" x-transition:enter-end="translate-y-0"
+                            x-transition:enter-start="translate-y-8"
+                            x-transition:leave="transition duration-300 ease-in"
+                            x-transition:leave-end="-translate-x-24 opacity-0 md:translate-x-24"
+                            x-transition:leave-start="translate-x-0 opacity-100">
+                            <div
+                                class="flex w-full items-center gap-2.5 bg-success/10 rounded-radius p-4 transition-all duration-300">
+
+                                <!-- Title & Message -->
+                                <div class="flex flex-col gap-2">
+                                    <h3 x-cloak x-show="notification.title" class="text-sm font-semibold text-success"
+                                        x-text="notification.title"></h3>
+                                    <p x-cloak x-show="notification.message" class="text-pretty text-sm"
+                                        x-text="notification.message"></p>
+                                </div>
+
+                                <!--Dismiss Button -->
+                                <button type="button" class="ml-auto" aria-label="dismiss notification"
+                                    x-on:click="(isVisible = false), removeNotification(notification.id)">
+                                    <svg xmlns="http://www.w3.org/2000/svg viewBox=" 0 0 24 24 stroke="currentColor"
+                                        fill="none" stroke-width="2" class="size-5 shrink-0" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Warning Notification  -->
+                    <template x-if="notification.variant === 'warning'">
+                        <div x-data="{ isVisible: false, timeout: null }" x-cloak x-show="isVisible"
+                            class="pointer-events-auto relative rounded-radius border border-warning bg-surface text-on-surface dark:bg-surface-dark dark:text-on-surface-dark"
+                            role="alert" x-on:pause-auto-dismiss.window="clearTimeout(timeout)"
+                            x-on:resume-auto-dismiss.window=" timeout = setTimeout(() => {(isVisible = false), removeNotification(notification.id) }, displayDuration)"
+                            x-init="$nextTick(() => { isVisible = true }), (timeout = setTimeout(() => { isVisible = false, removeNotification(notification.id)}, displayDuration))"
+                            x-transition:enter="transition duration-300 ease-out" x-transition:enter-end="translate-y-0"
+                            x-transition:enter-start="translate-y-8"
+                            x-transition:leave="transition duration-300 ease-in"
+                            x-transition:leave-end="-translate-x-24 opacity-0 md:translate-x-24"
+                            x-transition:leave-start="translate-x-0 opacity-100">
+                            <div
+                                class="flex w-full items-center gap-2.5 bg-warning/10 rounded-radius p-4 transition-all duration-300">
+
+                                <!-- Title & Message -->
+                                <div class="flex flex-col gap-2">
+                                    <h3 x-cloak x-show="notification.title" class="text-sm font-semibold text-warning"
+                                        x-text="notification.title"></h3>
+                                    <p x-cloak x-show="notification.message" class="text-pretty text-sm"
+                                        x-text="notification.message"></p>
+                                </div>
+
+                                <!--Dismiss Button -->
+                                <button type="button" class="ml-auto" aria-label="dismiss notification"
+                                    x-on:click="(isVisible = false), removeNotification(notification.id)">
+                                    <svg xmlns="http://www.w3.org/2000/svg viewBox=" 0 0 24 24 stroke="currentColor"
+                                        fill="none" stroke-width="2" class="size-5 shrink-0" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Danger Notification  -->
+                    <template x-if="notification.variant === 'danger'">
+                        <div x-data="{ isVisible: false, timeout: null }" x-cloak x-show="isVisible"
+                            class="pointer-events-auto relative rounded-radius border border-danger bg-surface text-on-surface dark:bg-surface-dark dark:text-on-surface-dark"
+                            role="alert" x-on:pause-auto-dismiss.window="clearTimeout(timeout)"
+                            x-on:resume-auto-dismiss.window=" timeout = setTimeout(() => {(isVisible = false), removeNotification(notification.id) }, displayDuration)"
+                            x-init="$nextTick(() => { isVisible = true }), (timeout = setTimeout(() => { isVisible = false, removeNotification(notification.id)}, displayDuration))"
+                            x-transition:enter="transition duration-300 ease-out" x-transition:enter-end="translate-y-0"
+                            x-transition:enter-start="translate-y-8"
+                            x-transition:leave="transition duration-300 ease-in"
+                            x-transition:leave-end="-translate-x-24 opacity-0 md:translate-x-24"
+                            x-transition:leave-start="translate-x-0 opacity-100">
+                            <div
+                                class="flex w-full items-center gap-2.5 bg-danger/10 rounded-radius p-4 transition-all duration-300">
+
+                                <!-- Title & Message -->
+                                <div class="flex flex-col gap-2">
+                                    <h3 x-cloak x-show="notification.title" class="text-sm font-semibold text-danger"
+                                        x-text="notification.title"></h3>
+                                    <p x-cloak x-show="notification.message" class="text-pretty text-sm"
+                                        x-text="notification.message"></p>
+                                </div>
+
+                                <!--Dismiss Button -->
+                                <button type="button" class="ml-auto" aria-label="dismiss notification"
+                                    x-on:click="(isVisible = false), removeNotification(notification.id)">
+                                    <svg xmlns="http://www.w3.org/2000/svg viewBox=" 0 0 24 24 stroke="currentColor"
+                                        fill="none" stroke-width="2" class="size-5 shrink-0" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Message Notification  -->
+                    <template x-if="notification.variant === 'message'">
+                        <div x-data="{ isVisible: false, timeout: null }" x-cloak x-show="isVisible"
+                            class="pointer-events-auto relative rounded-radius border border-outline bg-surface text-on-surface dark:border-outline-dark dark:bg-surface-dark dark:text-on-surface-dark"
+                            role="alert" x-on:pause-auto-dismiss.window="clearTimeout(timeout)"
+                            x-on:resume-auto-dismiss.window="timeout = setTimeout(() => { isVisible = false, removeNotification(notification.id) }, displayDuration)"
+                            x-init="$nextTick(() => { isVisible = true }), (timeout = setTimeout(() => { isVisible = false, removeNotification(notification.id) }, displayDuration))"
+                            x-transition:enter="transition duration-300 ease-out" x-transition:enter-end="translate-y-0"
+                            x-transition:enter-start="translate-y-8"
+                            x-transition:leave="transition duration-300 ease-in"
+                            x-transition:leave-end="-translate-x-24 opacity-0 md:translate-x-24"
+                            x-transition:leave-start="translate-x-0 opacity-100">
+                            <div
+                                class="flex w-full rounded-radius items-center gap-2.5 bg-surface-alt p-4 transition-all duration-300 dark:bg-surface-dark-alt">
+                                <div class="flex w-full items-center gap-2.5">
+
+                                    <!-- Avatar -->
+                                    <img x-cloak x-show="notification.sender.avatar" class="mr-2 size-12 rounded-full"
+                                        alt="avatar" aria-hidden="true" x-bind:src="notification.sender.avatar" />
+                                    <div class="flex flex-col items-start gap-2">
+                                        <!-- Title & Message -->
+                                        <h3 x-cloak x-show="notification.sender.name"
+                                            class="text-sm font-semibold text-on-surface-strong dark:text-on-surface-dark-strong"
+                                            x-text="notification.sender.name"></h3>
+                                        <p x-cloak x-show="notification.message" class="text-pretty text-sm"
+                                            x-text="notification.message"></p>
+
+                                        <!-- Action Buttons -->
+                                        <div class="flex items-center gap-4">
+                                            <button type="button"
+                                                class="whitespace-nowrap bg-transparent text-center text-sm font-bold tracking-wide text-primary transition hover:opacity-75 active:opacity-100 dark:text-primary-dark">Reply</button>
+                                            <button type="button"
+                                                class="whitespace-nowrap bg-transparent text-center text-sm font-bold tracking-wide text-on-surface transition hover:opacity-75 active:opacity-100 dark:text-on-surface-dark"
+                                                x-on:click=" (isVisible = false), setTimeout(() => { removeNotification(notification.id) }, 400)">Dismiss</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Dismiss Button -->
+                                <button type="button" class="ml-auto" aria-label="dismiss notification"
+                                    x-on:click="(isVisible = false), removeNotification(notification.id)">
+                                    <svg xmlns="http://www.w3.org/2000/svg viewBox=" 0 0 24 24 stroke="currentColor"
+                                        fill="none" stroke-width="2" class="size-5 shrink-0" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- Login Form -->
+    <div x-show="!isAuthenticated" class="min-h-screen flex items-center justify-center">
+        <article
+            class="w-full max-w-screen-lg group flex rounded-radius max-w-sm flex-col overflow-hidden border border-outline bg-surface-alt text-on-surface dark:border-outline-dark dark:bg-surface-dark-alt dark:text-on-surface-dark">
+            <form @submit.prevent="login()" class="flex flex-col gap-4 p-6">
+                <h3
+                    class="text-balance text-xl lg:text-2xl font-bold text-on-surface-strong dark:text-on-surface-dark-strong">
+                    Accedi
+                </h3>
+                <div class="flex w-full max-w-xs flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                    <label for="login_username" class="w-fit pl-0.5 text-sm">Username</label>
+                    <input id="login_username" type="text"
+                        class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                        name="username" placeholder="Username" autocomplete="username" x-model="loginForm.username"
+                        required />
+                </div>
+                <div class="flex w-full max-w-xs flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                    <label for="login_password" class="w-fit pl-0.5 text-sm">Password</label>
+                    <input id="login_password" type="password"
+                        class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                        name="password" placeholder="Password" autocomplete="password" x-model="loginForm.password"
+                        required />
+                </div>
+                <button type="submit" :disabled="loading"
+                    class="whitespace-nowrap bg-primary px-4 py-2 text-center text-sm font-medium tracking-wide text-on-primary transition hover:opacity-75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 dark:bg-primary-dark dark:text-on-primary-dark dark:focus-visible:outline-primary-dark rounded-radius">
+                    Accedi
+                </button>
+            </form>
+        </article>
+    </div>
+
+    <!-- Main Application -->
+    <div x-show="isAuthenticated" class="min-h-full">
+        <div x-data="{ showSidebar: false }" class="relative flex w-full flex-col md:flex-row">
+            <!-- This allows screen readers to skip the sidebar and go directly to the main content. -->
+            <a class="sr-only" href="#main-content">skip to the main content</a>
+
+            <!-- dark overlay for when the sidebar is open on smaller screens  -->
+            <div x-cloak x-show="showSidebar" class="fixed inset-0 z-10 bg-surface-dark/10 backdrop-blur-xs md:hidden"
+                aria-hidden="true" x-on:click="showSidebar = false" x-transition.opacity></div>
+
+            <nav x-cloak
+                class="fixed left-0 z-20 flex h-svh w-60 shrink-0 flex-col border-r border-outline bg-surface-alt p-4 transition-transform duration-300 md:w-64 md:translate-x-0 md:relative dark:border-outline-dark dark:bg-surface-dark-alt"
+                x-bind:class="showSidebar ? 'translate-x-0' : '-translate-x-60'" aria-label="sidebar navigation">
+                <!-- Logo  -->
+                <a href="/"
+                    class="ml-2 w-fit text-2xl font-bold text-on-surface-strong dark:text-on-surface-dark-strong">
+                    <span class="sr-only">homepage</span>
+                    <h1>Gestione Palchi</h1>
+                </a>
+
+                <!-- Sidebar  -->
+                <div class="mt-5 flex flex-col gap-2 overflow-y-auto pb-6">
+                    <template x-for="(value, index) in primaryMenu">
+                        <button @click="navigateToPage(value.route)"
+                            :class="currentPage === value.route && 'bg-primary/10'"
+                            class="cursor-pointer flex items-center rounded-radius gap-2 px-2 py-1.5 text-sm font-medium text-on-surface underline-offset-2 hover:bg-primary/5 hover:text-on-surface-strong focus-visible:underline focus:outline-hidden dark:text-on-surface-dark dark:hover:bg-primary-dark/5 dark:hover:text-on-surface-dark-strong">
+                            <span class="material-symbols-outlined" x-text="value.icon"></span>
+                            <span x-text="value.title"></span>
+                        </button>
+                    </template>
+                </div>
+
+                <!-- Profile  -->
+                <div x-data="{ menuIsOpen: false }" class="mt-auto" x-on:keydown.esc.window="menuIsOpen = false">
+                    <button type="button"
+                        class="flex w-full items-center rounded-radius gap-2 p-2 text-left text-on-surface hover:bg-primary/5 hover:text-on-surface-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:text-on-surface-dark dark:hover:bg-primary-dark/5 dark:hover:text-on-surface-dark-strong dark:focus-visible:outline-primary-dark"
+                        x-bind:class="menuIsOpen ? 'bg-primary/10 dark:bg-primary-dark/10' : ''" aria-haspopup="true"
+                        x-on:click="menuIsOpen = ! menuIsOpen" x-bind:aria-expanded="menuIsOpen">
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold text-on-surface-strong dark:text-on-surface-dark-strong"
+                                x-text="user?.username"></span>
+                            <span class="w-32 overflow-hidden text-ellipsis text-xs md:w-36" aria-hidden="true"
+                                x-text="user?.email"></span>
+                            <span class="sr-only">profile settings</span>
+                        </div>
+                        <span
+                            class="material-symbols-outlined ml-auto shrink-0 -rotate-90 md:rotate-0">chevron_right</span>
+                    </button>
+
+                    <!-- Profile Menu -->
+                    <div x-cloak x-show="menuIsOpen"
+                        class="absolute bottom-20 right-6 z-20 -mr-1 w-48 border divide-y divide-outline border-outline bg-surface dark:divide-outline-dark dark:border-outline-dark dark:bg-surface-dark rounded-radius md:-right-44 md:bottom-4"
+                        role="menu" x-on:click.outside="menuIsOpen = false"
+                        x-on:keydown.down.prevent="$focus.wrap().next()"
+                        x-on:keydown.up.prevent="$focus.wrap().previous()" x-transition="" x-trap="menuIsOpen">
+
+                        <div class="flex flex-col py-1.5">
+                            <button @click="showEditUserModal = true"
+                                class="cursor-pointer flex items-center gap-2 px-2 py-1.5 text-sm font-medium text-on-surface underline-offset-2 hover:bg-primary/5 hover:text-on-surface-strong focus-visible:underline focus:outline-hidden dark:text-on-surface-dark dark:hover:bg-primary-dark/5 dark:hover:text-on-surface-dark-strong"
+                                role="menuitem">
+                                <span class="material-symbols-outlined">person</span>
+                                <span>Profilo</span>
+                            </button>
+                        </div>
+
+                        <div class="flex flex-col py-1.5">
+                            <button @click="logout()"
+                                class="cursor-pointer flex items-center gap-2 px-2 py-1.5 text-sm font-medium text-on-surface underline-offset-2 hover:bg-primary/5 hover:text-on-surface-strong focus-visible:underline focus:outline-hidden dark:text-on-surface-dark dark:hover:bg-primary-dark/5 dark:hover:text-on-surface-dark-strong"
+                                role="menuitem">
+                                <span class="material-symbols-outlined">logout</span>
+                                <span>Esci</span>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Application  -->
+            <main id="main-content" class="h-svh w-full overflow-y-auto p-4 bg-surface dark:bg-surface-dark lg:pt-15">
+                <!-- Dashboard -->
+                <div x-show="currentPage === 'dashboard'">
+                    <div class="flex items-center justify-between mb-8">
+                        <h2
+                            class="text-balance text-2xl lg:text-4xl text-on-surface-strong dark:text-on-surface-dark-strong">
+                            Dashboard</h2>
+                        <button @click="refreshData()"
+                            class="inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-surface-alt border border-surface-alt px-4 py-2 text-sm font-medium tracking-wide text-on-surface-strong transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-surface-alt active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-surface-dark-alt dark:border-surface-dark-alt dark:text-on-surface-dark-strong dark:focus-visible:outline-surface-dark-alt">
+                            <span class="material-symbols-outlined text-sm">refresh</span>
+                            <span class="text-sm">Aggiorna</span>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-10">
+                        <template x-for="stat in [{
+                            title: 'Eventi totali',
+                            icon: 'event',
+                            value: stats.totalEvents,
+                        },
+                        {
+                            title: 'Associazioni',
+                            icon: 'groups',
+                            value: stats.totalAssociations,
+                        },
+                        {
+                            title: 'Volontari',
+                            icon: 'people',
+                            value: stats.totalVolunteers,
+                        },
+                        {
+                            title: 'Ricavi totali',
+                            icon: 'euro',
+                            value: formatCurrency(stats.totalRevenue),
+                        }]">
+                            <article
+                                class="group flex rounded-radius flex-col overflow-hidden border border-outline bg-surface-alt text-on-surface dark:border-outline-dark dark:bg-surface-dark-alt dark:text-on-surface-dark">
+                                <div class="flex flex-col gap-4 p-6">
+                                    <div class="flex items-center gap-1 font-medium">
+                                        <span class="material-symbols-outlined" x-text="stat.icon"></span>
+                                        <span x-text="stat.title"></span>
+                                    </div>
+                                    <h3 class="text-balance text-xl lg:text-2xl font-bold text-on-surface-strong dark:text-on-surface-dark-strong"
+                                        x-text="stat.value"></h3>
+                                </div>
+                            </article>
+                        </template>
+                    </div>
+
+                    <!-- Recent Events -->
+                    <h3
+                        class="text-balance mb-5 text-xl lg:text-2xl font-bold text-on-surface-strong dark:text-on-surface-dark-strong">
+                        Eventi recenti</h3>
+                    <div
+                        class="overflow-hidden w-full overflow-x-auto rounded-radius border border-outline dark:border-outline-dark">
+                        <table class="w-full text-left text-sm text-on-surface dark:text-on-surface-dark">
+                            <thead
+                                class="border-b border-outline bg-surface-alt text-sm text-on-surface-strong dark:border-outline-dark dark:bg-surface-dark-alt dark:text-on-surface-dark-strong">
+                                <tr>
+                                    <th scope="col" class="p-4">Evento</th>
+                                    <th scope="col" class="p-4">Data</th>
+                                    <th scope="col" class="p-4">Stato</th>
+                                    <th scope="col" class="p-4">Costo</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-outline dark:divide-outline-dark">
+                                <template x-for="event in recentEvents" :key="event.id">
+                                    <tr>
+                                        <td class="p-4 whitespace-nowrap">
+                                            <div class="flex flex-col">
+                                                <span class="text-neutral-900 dark:text-white"
+                                                    x-text="event.title"></span>
+                                                <span class="text-sm text-neutral-600 opacity-85 dark:text-neutral-300"
+                                                    x-text="event.location"></span>
+                                            </div>
+                                        </td>
+                                        <td class="p-4 whitespace-nowrap">
+                                            <div class="flex flex-col">
+                                                <span class="text-neutral-900 dark:text-white"
+                                                    x-text="formatDate(event.start_datetime)"></span>
+                                                <span x-show="event.end_datetime"
+                                                    class="text-sm text-neutral-600 opacity-85 dark:text-neutral-300"
+                                                    x-text="formatDate(event.end_datetime)"></span>
+                                            </div>
+                                        </td>
+                                        <td class="p-4 whitespace-nowrap">
+                                            <span
+                                                class="inline-flex overflow-hidden rounded-radius border-success px-1 py-0.5 text-xs font-medium"
+                                                :class="getStatusClass(event.status)"
+                                                x-text="getStatusText(event.status)"></span>
+                                        </td>
+                                        <td class="p-4 whitespace-nowrap" x-text="formatCurrency(event.total_cost)">
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Events Page -->
+                <div x-show="currentPage === 'events'">
+                    <div class="flex items-center justify-between mb-8">
+                        <h2
+                            class="text-balance text-2xl lg:text-4xl text-on-surface-strong dark:text-on-surface-dark-strong">
+                            Gestione eventi</h2>
+                        <button @click="refreshData()"
+                            class="inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-surface-alt border border-surface-alt px-4 py-2 text-sm font-medium tracking-wide text-on-surface-strong transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-surface-alt active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-surface-dark-alt dark:border-surface-dark-alt dark:text-on-surface-dark-strong dark:focus-visible:outline-surface-dark-alt">
+                            <span class="material-symbols-outlined text-sm">refresh</span>
+                            <span class="text-sm">Aggiorna</span>
+                        </button>
+                    </div>
+
+                    <!-- Events List -->
+                    <div class="mb-5 flex flex-col lg:flex-row items-end justify-between gap-5">
+                        <div
+                            class="relative flex w-full max-w-xs flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                            <label for="all_events_status" class="w-fit pl-0.5 text-sm">Filtra per stato</label>
+                            <span
+                                class="material-symbols-outlined absolute pointer-events-none right-4 top-8 size-5">expand_more</span>
+                            <select id="all_events_status" name="all_events_status" x-model="eventFilters.status"
+                                @change="loadEvents()"
+                                class="w-full appearance-none rounded-radius border border-outline bg-surface-alt px-4 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark">
+                                <option value="">Tutti gli stati</option>
+                                <template x-for="status in getStatusOptions()">
+                                    <option :value="status.value" x-text="status.label"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <button type="button" @click="showEventModal = true; eventForm = {...eventFormDefaults}"
+                            class="inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-primary border border-primary dark:border-primary-dark px-4 py-2 text-sm font-medium tracking-wide text-on-primary transition hover:opacity-75 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-primary-dark dark:text-on-primary-dark dark:focus-visible:outline-primary-dark">
+                            <span class="material-symbols-outlined">add</span>
+                            <span>Nuovo</span>
+                        </button>
+                    </div>
+                    <div
+                        class="overflow-hidden w-full overflow-x-auto rounded-radius border border-outline dark:border-outline-dark">
+                        <table class="w-full text-left text-sm text-on-surface dark:text-on-surface-dark">
+                            <thead
+                                class="border-b border-outline bg-surface-alt text-sm text-on-surface-strong dark:border-outline-dark dark:bg-surface-dark-alt dark:text-on-surface-dark-strong">
+                                <tr>
+                                    <th scope="col" class="p-4">Evento</th>
+                                    <th scope="col" class="p-4">Data</th>
+                                    <th scope="col" class="p-4">Richiedente</th>
+                                    <th scope="col" class="p-4">Dimensione palco</th>
+                                    <th scope="col" class="p-4">Montaggio/Smontaggio</th>
+                                    <th scope="col" class="p-4">Associazioni</th>
+                                    <th scope="col" class="p-4">Stato</th>
+                                    <th scope="col" class="p-4">Costo</th>
+                                    <th scope="col" class="p-4">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-outline dark:divide-outline-dark">
+                                <template x-for="event in events" :key="event.id">
+                                    <tr>
+                                        <td class="p-4 whitespace-nowrap">
+                                            <div class="flex flex-col">
+                                                <span class="text-neutral-900 dark:text-white"
+                                                    x-text="event.title"></span>
+                                                <span class="text-sm text-neutral-600 opacity-85 dark:text-neutral-300"
+                                                    x-text="event.location"></span>
+                                            </div>
+                                        </td>
+                                        <td class="p-4 whitespace-nowrap">
+                                            <div class="flex flex-col">
+                                                <span class="text-neutral-900 dark:text-white"
+                                                    x-text="formatDate(event.start_datetime)"></span>
+                                                <span x-show="event.end_datetime"
+                                                    class="text-sm text-neutral-600 opacity-85 dark:text-neutral-300"
+                                                    x-text="formatDate(event.end_datetime)"></span>
+                                            </div>
+                                        </td>
+                                        <td class="p-4 whitespace-nowrap" x-text="event.requester">
+                                        <td class="p-4 whitespace-nowrap" x-text="`${event.stage_size}m²`">
+                                        </td>
+                                        <td class="p-4 whitespace-nowrap">
+                                            <div class="flex flex-col">
+                                                <span class="text-neutral-900 dark:text-white"
+                                                    x-text="formatDate(event.assembly_datetime)"></span>
+                                                <span x-show="event.end_datetime"
+                                                    class="text-sm text-neutral-600 opacity-85 dark:text-neutral-300"
+                                                    x-text="formatDate(event.disassembly_datetime)"></span>
+                                            </div>
+                                        </td>
+                                        <td class="p-4 whitespace-nowrap"
+                                            x-text="event?.event_associations?.map((e) => `${e.association_name} (${e.volunteer_count})`).join(', ')">
+                                        </td>
+                                        <td class="p-4 whitespace-nowrap">
+                                            <span
+                                                class="inline-flex overflow-hidden rounded-radius border-success px-1 py-0.5 text-xs font-medium"
+                                                :class="getStatusClass(event.status)"
+                                                x-text="getStatusText(event.status)"></span>
+                                        </td>
+                                        <td class="p-4 whitespace-nowrap" x-text="formatCurrency(event.total_cost)">
+                                        </td>
+                                        <td class="p-4 whitespace-nowrap">
+                                            <button type="button"
+                                                class="me-1 bg-transparent rounded-radius font-medium tracking-wide text-secondary transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:text-secondary-dark dark:focus-visible:outline-secondary-dark"
+                                                @click="viewEventDetails(event)">
+                                                <span class="material-symbols-outlined !text-lg">groups</span>
+                                            </button>
+                                            <button type="button"
+                                                class="me-1 bg-transparent rounded-radius font-medium tracking-wide text-secondary transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:text-secondary-dark dark:focus-visible:outline-secondary-dark"
+                                                @click="editEvent(event)">
+                                                <span class="material-symbols-outlined !text-lg">edit</span>
+                                            </button>
+                                            <button type="button"
+                                                class="me-1 bg-transparent rounded-radius font-medium tracking-wide text-danger transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:text-danger-dark dark:focus-visible:outline-danger-dark"
+                                                @click="deleteEvent(event.id)">
+                                                <span class="material-symbols-outlined !text-lg">delete</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Associations Page -->
+                <div x-show="currentPage === 'associations'">
+                    <div class="flex items-center justify-between mb-8">
+                        <h2
+                            class="text-balance text-2xl lg:text-4xl text-on-surface-strong dark:text-on-surface-dark-strong">
+                            Gestione associazioni</h2>
+                        <button @click="refreshData()"
+                            class="inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-surface-alt border border-surface-alt px-4 py-2 text-sm font-medium tracking-wide text-on-surface-strong transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-surface-alt active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-surface-dark-alt dark:border-surface-dark-alt dark:text-on-surface-dark-strong dark:focus-visible:outline-surface-dark-alt">
+                            <span class="material-symbols-outlined text-sm">refresh</span>
+                            <span class="text-sm">Aggiorna</span>
+                        </button>
+                    </div>
+
+                    <!-- Associations List -->
+                    <div class="mb-5 flex flex-col lg:flex-row items-end justify-between gap-5">
+                        <div></div>
+                        <button type="button"
+                            @click="showAssociationModal = true; associationForm = {...associationFormDefaults}"
+                            class="inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-primary border border-primary dark:border-primary-dark px-4 py-2 text-sm font-medium tracking-wide text-on-primary transition hover:opacity-75 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-primary-dark dark:text-on-primary-dark dark:focus-visible:outline-primary-dark">
+                            <span class="material-symbols-outlined">add</span>
+                            <span>Nuova</span>
+                        </button>
+                    </div>
+                    <div
+                        class="overflow-hidden w-full overflow-x-auto rounded-radius border border-outline dark:border-outline-dark">
+                        <table class="w-full text-left text-sm text-on-surface dark:text-on-surface-dark">
+                            <thead
+                                class="border-b border-outline bg-surface-alt text-sm text-on-surface-strong dark:border-outline-dark dark:bg-surface-dark-alt dark:text-on-surface-dark-strong">
+                                <tr>
+                                    <th scope="col" class="p-4">Nome</th>
+                                    <th scope="col" class="p-4">Referente</th>
+                                    <th scope="col" class="p-4">Codice Fiscale</th>
+                                    <th scope="col" class="p-4">IBAN</th>
+                                    <th scope="col" class="p-4">Volontari</th>
+                                    <th scope="col" class="p-4">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-outline dark:divide-outline-dark">
+                                <template x-for="association in associations" :key="association.id">
+                                    <tr>
+                                        <td class="p-4 whitespace-nowrap">
+                                            <div class="flex flex-col">
+                                                <span class="text-neutral-900 dark:text-white"
+                                                    x-text="association.name"></span>
+                                                <span class="text-sm text-neutral-600 opacity-85 dark:text-neutral-300"
+                                                    x-text="association.headquarters"></span>
+                                            </div>
+                                        </td>
+                                        <td class="p-4 whitespace-nowrap" x-text="association.contact_person"></td>
+                                        <td class="p-4 whitespace-nowrap" x-text="association.tax_code"></td>
+                                        <td class="p-4 whitespace-nowrap" x-text="association.iban"></td>
+                                        <td class="p-4 whitespace-nowrap" x-text="association.volunteers?.length"></td>
+                                        <td class="p-4 whitespace-nowrap">
+                                            <button type="button"
+                                                class="me-1 bg-transparent rounded-radius font-medium tracking-wide text-secondary transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:text-secondary-dark dark:focus-visible:outline-secondary-dark"
+                                                @click="manageVolunteers(association)">
+                                                <span class="material-symbols-outlined !text-lg">groups</span>
+                                            </button>
+                                            <button type="button"
+                                                class="me-1 bg-transparent rounded-radius font-medium tracking-wide text-secondary transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:text-secondary-dark dark:focus-visible:outline-secondary-dark"
+                                                @click="editAssociation(association)">
+                                                <span class="material-symbols-outlined !text-lg">edit</span>
+                                            </button>
+                                            <button type="button"
+                                                class="me-1 bg-transparent rounded-radius font-medium tracking-wide text-danger transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:text-danger-dark dark:focus-visible:outline-danger-dark"
+                                                @click="deleteAssociation(association.id)">
+                                                <span class="material-symbols-outlined !text-lg">delete</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Reports Page -->
+                <div x-show="currentPage === 'reports'">
+                    <div class="flex items-center justify-between mb-8">
+                        <h2
+                            class="text-balance text-2xl lg:text-4xl text-on-surface-strong dark:text-on-surface-dark-strong">
+                            Riepilogo</h2>
+                        <button @click="refreshData()"
+                            class="inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-surface-alt border border-surface-alt px-4 py-2 text-sm font-medium tracking-wide text-on-surface-strong transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-surface-alt active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-surface-dark-alt dark:border-surface-dark-alt dark:text-on-surface-dark-strong dark:focus-visible:outline-surface-dark-alt">
+                            <span class="material-symbols-outlined text-sm">refresh</span>
+                            <span class="text-sm">Aggiorna</span>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-10">
+                        <template x-for="stat in [{
+                                            title: 'Eventi',
+                                            icon: 'event',
+                                            value: stats.totalEvents,
+                                        },
+                                        {
+                                            title: 'Ricavi totali',
+                                            icon: 'euro',
+                                            value: formatCurrency(stats.totalRevenue),
+                                        },
+                                        {
+                                            title: 'Costi certificazioni',
+                                            icon: 'euro',
+                                            value: formatCurrency(reports.overall_totals?.total_certification_costs || 0),
+                                        },
+                                        {
+                                            title: 'Guadagni Pro Loco',
+                                            icon: 'euro',
+                                            value: formatCurrency(reports.pro_loco_earnings?.total_earnings || 0),
+                                        }]">
+                            <article
+                                class="group flex rounded-radius flex-col overflow-hidden border border-outline bg-surface-alt text-on-surface dark:border-outline-dark dark:bg-surface-dark-alt dark:text-on-surface-dark">
+                                <div class="flex flex-col gap-4 p-6">
+                                    <div class="flex items-center gap-1 font-medium">
+                                        <span class="material-symbols-outlined" x-text="stat.icon"></span>
+                                        <span x-text="stat.title"></span>
+                                    </div>
+                                    <h3 class="text-balance text-xl lg:text-2xl font-bold text-on-surface-strong dark:text-on-surface-dark-strong"
+                                        x-text="stat.value"></h3>
+                                </div>
+                            </article>
+                        </template>
+                    </div>
+
+                    <!-- Association Earnings -->
+                    <h3
+                        class="text-balance mb-5 text-xl lg:text-2xl font-bold text-on-surface-strong dark:text-on-surface-dark-strong">
+                        Guadagni per associazione</h3>
+                    <div
+                        class="overflow-hidden w-full overflow-x-auto rounded-radius border border-outline dark:border-outline-dark">
+                        <table class="w-full text-left text-sm text-on-surface dark:text-on-surface-dark">
+                            <thead
+                                class="border-b border-outline bg-surface-alt text-sm text-on-surface-strong dark:border-outline-dark dark:bg-surface-dark-alt dark:text-on-surface-dark-strong">
+                                <tr>
+                                    <th scope="col" class="p-4">Associazione</th>
+                                    <th scope="col" class="p-4">Eventi</th>
+                                    <th scope="col" class="p-4">Guadagni totali</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-outline dark:divide-outline-dark">
+                                <template x-for="earning in reports.association_earnings || []"
+                                    :key="earning.association_id">
+                                    <tr>
+                                        <td class="p-4 whitespace-nowrap" x-text="earning.association_name"></td>
+                                        <td class="p-4 whitespace-nowrap" x-text="earning.events_count"></td>
+                                        <td class="p-4 whitespace-nowrap"
+                                            x-text="formatCurrency(earning.total_earnings)"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+
+            <!-- Toggle Sidebar  -->
+            <button x-cloak
+                class="fixed right-4 top-4 z-20 rounded-full bg-primary aspect-square w-12 h-12 flex items-center justify-center md:hidden text-on-primary dark:bg-primary-dark dark:text-on-primary-dark"
+                x-on:click="showSidebar = !showSidebar">
+                <span x-show="showSidebar" class="material-symbols-outlined">close</span>
+                <span x-show="!showSidebar" class="material-symbols-outlined">dock_to_right</span>
+                <span class="sr-only">sidebar toggle</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Event Modal -->
+    <div x-cloak x-show="showEventModal" x-transition.opacity.duration.200ms x-trap.inert.noscroll="showEventModal"
+        x-on:keydown.esc.window="showEventModal = false" x-on:click.self="showEventModal = false"
+        class="fixed inset-0 z-30 flex items-end justify-center bg-black/20 p-4 pb-8 backdrop-blur-md sm:items-center lg:p-8"
+        role="dialog" aria-modal="true" aria-labelledby="defaultModalTitle">
+        <!-- Modal Dialog -->
+        <div x-show="showEventModal"
+            x-transition:enter="transition ease-out duration-200 delay-100 motion-reduce:transition-opacity"
+            x-transition:enter-start="opacity-0 -translate-y-8" x-transition:enter-end="opacity-100 translate-y-0"
+            class="flex w-full max-w-xl flex-col gap-4 overflow-hidden rounded-radius border border-outline bg-surface text-on-surface dark:border-outline-dark dark:bg-surface-dark-alt dark:text-on-surface-dark">
+            <!-- Dialog Header -->
+            <div
+                class="flex items-center justify-between border-b border-outline bg-surface-alt/60 p-4 dark:border-outline-dark dark:bg-surface-dark/20">
+                <h3 id="defaultModalTitle"
+                    class="font-semibold tracking-wide text-on-surface-strong dark:text-on-surface-dark-strong"
+                    x-text="eventForm.id ? 'Modifica evento' : 'Nuovo evento'"></h3>
+                <button x-on:click="showEventModal = false" aria-label="close modal">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <form @submit.prevent="saveEvent()">
+                <!-- Dialog Body -->
+                <div class="px-4 pb-8 grid gap-4 md:grid-cols-2">
+                    <div class="flex w-full col-span-2 flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_event_title" class="w-fit pl-0.5 text-sm">Titolo</label>
+                        <input id="form_event_title" type="text"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Titolo" x-model="eventForm.title" required />
+                    </div>
+                    <div class="flex w-full flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_event_start_datetime" class="w-fit pl-0.5 text-sm">Data inzio</label>
+                        <input id="form_event_start_datetime" type="datetime-local"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Data inzio" x-model="eventForm.start_datetime" required />
+                    </div>
+                    <div class="flex w-full flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_event_end_datetime" class="w-fit pl-0.5 text-sm">Data fine</label>
+                        <input id="form_event_end_datetime" type="datetime-local"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Data fine" x-model="eventForm.end_datetime" required />
+                    </div>
+                    <div class="flex w-full col-span-2 flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_event_location" class="w-fit pl-0.5 text-sm">Luogo</label>
+                        <input id="form_event_location" type="text"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Luogo" x-model="eventForm.location" required />
+                    </div>
+                    <div class="flex w-full col-span-2 flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_event_stage_size" class="w-fit pl-0.5 text-sm">Dimensione palco (m²)</label>
+                        <input id="form_event_stage_size" type="text"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Dimensione palco (m²)" x-model="eventForm.stage_size" required />
+                    </div>
+                    <div class="flex w-full flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_event_requester" class="w-fit pl-0.5 text-sm">Richiedente</label>
+                        <input id="form_event_requester" type="text"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Richiedente" x-model="eventForm.requester" required />
+                    </div>
+                    <div class="flex w-full flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_event_request_received_date" class="w-fit pl-0.5 text-sm">Data
+                            richiesta</label>
+                        <input id="form_event_request_received_date" type="datetime-local"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Data richiesta" x-model="eventForm.request_received_date" required />
+                    </div>
+                    <div
+                        class="col-span-2 relative flex w-full flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="all_events_status" class="w-fit pl-0.5 text-sm">Stato</label>
+                        <span
+                            class="material-symbols-outlined absolute pointer-events-none right-4 top-8 size-5">expand_more</span>
+                        <select id="all_events_status" name="all_events_status" x-model="eventForm.status"
+                            class="w-full appearance-none rounded-radius border border-outline bg-surface-alt px-4 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark">
+                            <template x-for="status in getStatusOptions()">
+                                <option :value="status.value" x-text="status.label"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="flex w-full flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_event_assembly_datetime" class="w-fit pl-0.5 text-sm">Data montaggio</label>
+                        <input id="form_event_assembly_datetime" type="datetime-local"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Data montaggio" x-model="eventForm.assembly_datetime" required />
+                    </div>
+                    <div class="flex w-full flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_event_disassembly_datetime" class="w-fit pl-0.5 text-sm">Data
+                            smontaggio</label>
+                        <input id="form_event_disassembly_datetime" type="datetime-local"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Data smontaggio" x-model="eventForm.disassembly_datetime" required />
+                    </div>
+                </div>
+                <!-- Dialog Footer -->
+                <div
+                    class="flex flex-col-reverse justify-between gap-2 border-t border-outline bg-surface-alt/60 p-4 dark:border-outline-dark dark:bg-surface-dark/20 sm:flex-row sm:items-center md:justify-end">
+                    <button x-on:click="showEventModal = false" type="button"
+                        class="whitespace-nowrap rounded-radius px-4 py-2 text-center text-sm font-medium tracking-wide text-on-surface transition hover:opacity-75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 dark:text-on-surface-dark dark:focus-visible:outline-primary-dark">
+                        Annulla
+                    </button>
+                    <button :disabled="loading" type="submit"
+                        class="whitespace-nowrap rounded-radius bg-primary border border-primary dark:border-primary-dark px-4 py-2 text-center text-sm font-medium tracking-wide text-on-primary transition hover:opacity-75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 dark:bg-primary-dark dark:text-on-primary-dark dark:focus-visible:outline-primary-dark">
+                        Salva
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Association Modal -->
+    <div x-cloak x-show="showAssociationModal" x-transition.opacity.duration.200ms
+        x-trap.inert.noscroll="showAssociationModal" x-on:keydown.esc.window="showAssociationModal = false"
+        x-on:click.self="showAssociationModal = false"
+        class="fixed inset-0 z-30 flex items-end justify-center bg-black/20 p-4 pb-8 backdrop-blur-md sm:items-center lg:p-8"
+        role="dialog" aria-modal="true" aria-labelledby="defaultModalTitle">
+        <!-- Modal Dialog -->
+        <div x-show="showAssociationModal"
+            x-transition:enter="transition ease-out duration-200 delay-100 motion-reduce:transition-opacity"
+            x-transition:enter-start="opacity-0 -translate-y-8" x-transition:enter-end="opacity-100 translate-y-0"
+            class="flex w-full max-w-xl flex-col gap-4 overflow-hidden rounded-radius border border-outline bg-surface text-on-surface dark:border-outline-dark dark:bg-surface-dark-alt dark:text-on-surface-dark">
+            <!-- Dialog Header -->
+            <div
+                class="flex items-center justify-between border-b border-outline bg-surface-alt/60 p-4 dark:border-outline-dark dark:bg-surface-dark/20">
+                <h3 id="defaultModalTitle"
+                    class="font-semibold tracking-wide text-on-surface-strong dark:text-on-surface-dark-strong"
+                    x-text="associationForm.id ? 'Modifica associazione' : 'Nuova associazione'"></h3>
+                <button x-on:click="showAssociationModal = false" aria-label="close modal">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <form @submit.prevent="saveAssociation()">
+                <!-- Dialog Body -->
+                <div class="px-4 pb-8 grid gap-4 md:grid-cols-2">
+                    <div class="flex w-full col-span-2 flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_association_name" class="w-fit pl-0.5 text-sm">Nome</label>
+                        <input id="form_association_name" type="text"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Nome" x-model="associationForm.name" required />
+                    </div>
+                    <div class="flex w-full col-span-2 flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_association_contact_person" class="w-fit pl-0.5 text-sm">Referente</label>
+                        <input id="form_association_contact_person" type="text"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Referente" x-model="associationForm.contact_person" />
+                    </div>
+                    <div class="flex w-full col-span-2 flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_association_headquarters" class="w-fit pl-0.5 text-sm">Sede</label>
+                        <input id="form_association_headquarters" type="text"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Sede" x-model="associationForm.headquarters" />
+                    </div>
+                    <div class="flex w-full col-span-2 flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_association_tax_code" class="w-fit pl-0.5 text-sm">Codice fiscale</label>
+                        <input id="form_association_tax_code" type="text"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Codice fiscale" x-model="associationForm.tax_code" />
+                    </div>
+                    <div class="flex w-full col-span-2 flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_association_iban" class="w-fit pl-0.5 text-sm">IBAN</label>
+                        <input id="form_association_iban" type="text"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="IBAN" x-model="associationForm.iban" />
+                    </div>
+                </div>
+                <!-- Dialog Footer -->
+                <div
+                    class="flex flex-col-reverse justify-between gap-2 border-t border-outline bg-surface-alt/60 p-4 dark:border-outline-dark dark:bg-surface-dark/20 sm:flex-row sm:items-center md:justify-end">
+                    <button x-on:click="showAssociationModal = false" type="button"
+                        class="whitespace-nowrap rounded-radius px-4 py-2 text-center text-sm font-medium tracking-wide text-on-surface transition hover:opacity-75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 dark:text-on-surface-dark dark:focus-visible:outline-primary-dark">
+                        Annulla
+                    </button>
+                    <button :disabled="loading" type="submit"
+                        class="whitespace-nowrap rounded-radius bg-primary border border-primary dark:border-primary-dark px-4 py-2 text-center text-sm font-medium tracking-wide text-on-primary transition hover:opacity-75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 dark:bg-primary-dark dark:text-on-primary-dark dark:focus-visible:outline-primary-dark">
+                        Salva
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Volunteer Management Modal -->
+    <div x-cloak x-show="showVolunteerModal" x-transition.opacity.duration.200ms
+        x-trap.inert.noscroll="showVolunteerModal" x-on:keydown.esc.window="showVolunteerModal = false"
+        x-on:click.self="showVolunteerModal = false"
+        class="fixed inset-0 z-30 flex items-end justify-center bg-black/20 p-4 pb-8 backdrop-blur-md sm:items-center lg:p-8"
+        role="dialog" aria-modal="true" aria-labelledby="defaultModalTitle">
+        <!-- Modal Dialog -->
+        <div x-show="showVolunteerModal"
+            x-transition:enter="transition ease-out duration-200 delay-100 motion-reduce:transition-opacity"
+            x-transition:enter-start="opacity-0 -translate-y-8" x-transition:enter-end="opacity-100 translate-y-0"
+            class="flex w-full max-w-screen-xl flex-col gap-4 overflow-hidden rounded-radius border border-outline bg-surface text-on-surface dark:border-outline-dark dark:bg-surface-dark-alt dark:text-on-surface-dark">
+            <!-- Dialog Header -->
+            <div
+                class="flex items-center justify-between border-b border-outline bg-surface-alt/60 p-4 dark:border-outline-dark dark:bg-surface-dark/20">
+                <h3 id="defaultModalTitle"
+                    class="font-semibold tracking-wide text-on-surface-strong dark:text-on-surface-dark-strong"
+                    x-text="`Gestisci volontari - ${selectedAssociation?.name}`"></h3>
+                <button x-on:click="showVolunteerModal = false" aria-label="close modal">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <!-- Dialog Body -->
+            <div class="px-4 pb-4">
+                <form @submit.prevent="addVolunteer()" class="grid gap-4 md:grid-cols-2 pb-4">
+                    <div class="flex w-full flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_association_volunteer_first_name" class="w-fit pl-0.5 text-sm">Nome</label>
+                        <input id="form_association_volunteer_first_name" type="text"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Nome" x-model="volunteerForm.first_name" required />
+                    </div>
+                    <div class="flex w-full flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_association_volunteer_last_name" class="w-fit pl-0.5 text-sm">Cognome</label>
+                        <input id="form_association_volunteer_last_name" type="text"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Cognome" x-model="volunteerForm.last_name" required />
+                    </div>
+                    <div class="flex w-full flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_association_date_of_birth" class="w-fit pl-0.5 text-sm">Data di
+                            nascita</label>
+                        <input id="form_association_date_of_birth" type="date"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Data di nascita" x-model="volunteerForm.date_of_birth" />
+                    </div>
+                    <label for="form_association_volunteer_is_certified"
+                        class="w-min flex flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <input id="form_association_volunteer_is_certified" type="checkbox" class="peer sr-only"
+                            role="switch" x-model="volunteerForm.is_certified" />
+                        <span class="w-fit pl-0.5 text-sm mb-2">Certificato</span>
+                        <div class="relative h-6 w-11 after:h-5 after:w-5 peer-checked:after:translate-x-5 rounded-full border border-outline bg-surface-alt after:absolute after:bottom-0 after:left-[0.0625rem] after:top-0 after:my-auto after:rounded-full after:bg-on-surface after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:bg-on-primary peer-focus:outline-2 peer-focus:outline-offset-2 peer-focus:outline-outline-strong peer-focus:peer-checked:outline-primary peer-active:outline-offset-0 peer-disabled:cursor-not-allowed peer-disabled:opacity-70 dark:border-outline-dark dark:bg-surface-dark-alt dark:after:bg-on-surface-dark dark:peer-checked:bg-primary-dark dark:peer-checked:after:bg-on-primary-dark dark:peer-focus:outline-outline-dark-strong dark:peer-focus:peer-checked:outline-primary-dark"
+                            aria-hidden="true"></div>
+                    </label>
+                    <button type="submit" :disabled="loading"
+                        class="w-min inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-primary border border-primary dark:border-primary-dark px-4 py-2 text-sm font-medium tracking-wide text-on-primary transition hover:opacity-75 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-primary-dark dark:text-on-primary-dark dark:focus-visible:outline-primary-dark">
+                        <span class="material-symbols-outlined">add</span>
+                        <span>Aggiungi</span>
+                    </button>
+                </form>
+
+                <div
+                    class="overflow-hidden w-full overflow-x-auto rounded-radius border border-outline dark:border-outline-dark">
+                    <table class="w-full text-left text-sm text-on-surface dark:text-on-surface-dark">
+                        <thead
+                            class="border-b border-outline bg-surface-alt text-sm text-on-surface-strong dark:border-outline-dark dark:bg-surface-dark-alt dark:text-on-surface-dark-strong">
+                            <tr>
+                                <th scope="col" class="p-4">Nome</th>
+                                <th scope="col" class="p-4">Data di nascita</th>
+                                <th scope="col" class="p-4">Certificato</th>
+                                <th scope="col" class="p-4">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-outline dark:divide-outline-dark">
+                            <template x-for="volunteer in volunteers" :key="volunteer.id">
+                                <tr>
+                                    <td class="p-4 whitespace-nowrap"
+                                        x-text="volunteer.first_name + ' ' + volunteer.last_name"></td>
+                                    <td class="p-4 whitespace-nowrap" x-text="volunteer.date_of_birth || 'N/A'"></td>
+                                    <td class="p-4 whitespace-nowrap">
+                                        <span
+                                            class="inline-flex overflow-hidden rounded-radius border-success px-1 py-0.5 text-xs font-medium"
+                                            :class="volunteer.is_certified ? 'text-success bg-success/10' : 'text-danger bg-danger/10'"
+                                            x-text="volunteer.is_certified ? 'Si' : 'No'"></span>
+                                    </td>
+                                    <td class="p-4 whitespace-nowrap">
+                                        <button type="button"
+                                            class="me-1 bg-transparent rounded-radius font-medium tracking-wide text-danger transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:text-danger-dark dark:focus-visible:outline-danger-dark"
+                                            @click="deleteVolunteer(volunteer.id)">
+                                            <span class="material-symbols-outlined !text-lg">delete</span>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Details Modal -->
+    <div x-cloak x-show="showEventDetailsModal" x-transition.opacity.duration.200ms
+        x-trap.inert.noscroll="showEventDetailsModal" x-on:keydown.esc.window="showEventDetailsModal = false"
+        x-on:click.self="showEventDetailsModal = false"
+        class="fixed inset-0 z-30 flex items-end justify-center bg-black/20 p-4 pb-8 backdrop-blur-md sm:items-center lg:p-8"
+        role="dialog" aria-modal="true" aria-labelledby="defaultModalTitle">
+        <!-- Modal Dialog -->
+        <div x-show="showEventDetailsModal"
+            x-transition:enter="transition ease-out duration-200 delay-100 motion-reduce:transition-opacity"
+            x-transition:enter-start="opacity-0 -translate-y-8" x-transition:enter-end="opacity-100 translate-y-0"
+            class="flex w-full max-w-screen-xl flex-col gap-4 overflow-hidden rounded-radius border border-outline bg-surface text-on-surface dark:border-outline-dark dark:bg-surface-dark-alt dark:text-on-surface-dark">
+            <!-- Dialog Header -->
+            <div
+                class="flex items-center justify-between border-b border-outline bg-surface-alt/60 p-4 dark:border-outline-dark dark:bg-surface-dark/20">
+                <h3 id="defaultModalTitle"
+                    class="font-semibold tracking-wide text-on-surface-strong dark:text-on-surface-dark-strong"
+                    x-text="`Gestisci associazioni - ${selectedEvent?.title}`"></h3>
+                <button x-on:click="showEventDetailsModal = false" aria-label="close modal">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <!-- Dialog Body -->
+            <div class="px-4 pb-4">
+                <form @submit.prevent="assignAssociationToEvent()" class="grid gap-4 pb-4">
+                    <div class="relative flex w-full flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_assign_event_association" class="w-fit pl-0.5 text-sm">Associazione</label>
+                        <span
+                            class="material-symbols-outlined absolute pointer-events-none right-4 top-8 size-5">expand_more</span>
+                        <select id="form_assign_event_association" name="assign_event_association"
+                            x-model="eventAssignmentForm.association_id" required
+                            class="w-full appearance-none rounded-radius border border-outline bg-surface-alt px-4 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark">
+                            <option value="">Seleziona un'associazione</option>
+                            <template x-for="association in associations" :key="association.id">
+                                <option :value="association.id" x-text="association.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="flex w-full flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_assign_event_volunteer_count" class="w-fit pl-0.5 text-sm">Numero di
+                            volontari</label>
+                        <input id="form_assign_event_volunteer_count" type="number" min="1"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Numero di volontari" x-model="eventAssignmentForm.volunteer_count" required />
+                    </div>
+
+                    <div class="flex w-full flex-col gap-1 text-on-surface dark:text-on-surface-dark"
+                        x-show="getAssociationVolunteers(eventAssignmentForm.association_id)?.length">
+                        <label for="form_assign_event_volunteer_count" class="w-fit pl-0.5 text-sm">Volontari
+                            specifici</label>
+                        <ul
+                            class="flex flex-col divide-y divide-outline overflow-clip rounded-radius border border-outline dark:divide-outline-dark dark:border-outline-dark">
+                            <template x-for="volunteer in getAssociationVolunteers(eventAssignmentForm.association_id)">
+                                <li>
+                                    <label :for="`form_assign_event_volunteer_ids_${volunteer.id}`"
+                                        class="flex items-center gap-2 p-3 text-sm font-medium text-on-surface dark:text-on-surface-dark has-checked:text-on-surface-strong dark:has-checked:text-on-surface-dark-strong has-disabled:cursor-not-allowed has-disabled:opacity-75">
+                                        <span class="relative flex items-center">
+                                            <input :id="`form_assign_event_volunteer_ids_${volunteer.id}`"
+                                                type="checkbox"
+                                                class="before:content[''] peer relative size-4 appearance-none overflow-hidden rounded border-outline bg-surface-alt before:absolute before:inset-0 checked:border-primary checked:before:bg-primary focus:outline-2 focus:outline-offset-2 focus:outline-outline-strong checked:focus:outline-primary active:outline-offset-0 disabled:cursor-not-allowed dark:border-outline-dark dark:bg-surface-dark-alt dark:checked:border-primary-dark dark:checked:before:bg-primary-dark dark:focus:outline-outline-dark-strong dark:checked:focus:outline-primary-dark"
+                                                :value="volunteer.id" x-model="eventAssignmentForm.volunteer_ids" />
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                                aria-hidden="true" stroke="currentColor" fill="none" stroke-width="4"
+                                                class="pointer-events-none invisible absolute left-1/2 top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 text-on-primary peer-checked:visible dark:text-on-primary-dark">
+                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                    d="M4.5 12.75l6 6 9-13.5" />
+                                            </svg>
+                                        </span>
+                                        <span x-text="volunteer.first_name + ' ' + volunteer.last_name"></span>
+                                        <span x-show="volunteer.is_certified"
+                                            class="inline-flex overflow-hidden rounded-radius border-success px-1 py-0.5 text-xs font-medium text-success bg-success/10">Certificato</span>
+                                    </label>
+                                </li>
+                            </template>
+                        </ul>
+                    </div>
+
+                    <button type="submit" :disabled="loading"
+                        class="w-min inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-primary border border-primary dark:border-primary-dark px-4 py-2 text-sm font-medium tracking-wide text-on-primary transition hover:opacity-75 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-primary-dark dark:text-on-primary-dark dark:focus-visible:outline-primary-dark">
+                        <span class="material-symbols-outlined">add</span>
+                        <span>Aggiungi</span>
+                    </button>
+                </form>
+
+                <div x-data="{ selectedAccordionItem: null }"
+                    class="w-full divide-y divide-outline overflow-hidden rounded-sm border border-outline bg-surface-alt/40 text-on-surface dark:divide-outline-dark dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:text-on-surface-dark">
+                    <template x-for="assignment in selectedEvent?.event_associations || []" :key="assignment.id">
+                        <div>
+                            <button :id="`controls-assignments-${assignment.id}`" type="button"
+                                class="flex w-full items-center justify-between gap-4 bg-surface-alt p-4 text-left underline-offset-2 hover:bg-surface-alt/75 focus-visible:bg-surface-alt/75 focus-visible:underline focus-visible:outline-hidden dark:bg-surface-dark-alt dark:hover:bg-surface-dark-alt/75 dark:focus-visible:bg-surface-dark-alt/75"
+                                :aria-controls="`accordion-assignment-${assignment.id}`"
+                                x-on:click="selectedAccordionItem = selectedAccordionItem === assignment.id ? null : assignment.id"
+                                x-bind:class="selectedAccordionItem === assignment.id ? 'text-on-surface-strong dark:text-on-surface-dark-strong font-bold'  : 'text-on-surface dark:text-on-surface-dark font-medium'"
+                                x-bind:aria-expanded="selectedAccordionItem === assignment.id ? 'true' : 'false'">
+                                <div>
+                                    <span
+                                        x-text="`${assignment.association_name} (${assignment.volunteer_count} volontari)`"></span>
+                                </div>
+                                <span class="material-symbols-outlined"
+                                    :class="selectedAccordionItem === assignment.id  ?  'rotate-180'  :  'rotate-0'"
+                                    class="size-5 shrink-0 transition" aria-hidden="true">keyboard_control_key</span>
+                            </button>
+                            <div x-cloak x-show="selectedAccordionItem === assignment.id"
+                                :id="`accordion-assignment-${assignment.id}`" role="region"
+                                :aria-labelledby="`controls-assignments-${assignment.id}`" x-collapse>
+                                <div class="p-4 text-sm sm:text-base text-pretty">
+                                    <button type="button" @click="removeAssociationFromEvent(assignment.association_id)"
+                                        class="inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-danger border border-danger dark:border-danger px-4 py-2 text-sm font-medium tracking-wide text-on-danger transition hover:opacity-75 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-danger dark:text-on-danger dark:focus-visible:outline-danger">
+                                        <span class="material-symbols-outlined">delete</span>
+                                        Rimuovi associazione
+                                    </button>
+                                    <div x-show="assignment.volunteers.length > 0"
+                                        class="mt-3 overflow-hidden w-full overflow-x-auto rounded-radius border border-outline dark:border-outline-dark">
+                                        <table
+                                            class="w-full text-left text-sm text-on-surface dark:text-on-surface-dark">
+                                            <thead
+                                                class="border-b border-outline bg-surface-alt text-sm text-on-surface-strong dark:border-outline-dark dark:bg-surface-dark-alt dark:text-on-surface-dark-strong">
+                                                <tr>
+                                                    <th scope="col" class="p-4">Nome</th>
+                                                    <th scope="col" class="p-4">Data di nascita</th>
+                                                    <th scope="col" class="p-4">Certificato</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-outline dark:divide-outline-dark">
+                                                <template x-for="volunteer in assignment.volunteers"
+                                                    :key="volunteer.id">
+                                                    <tr>
+                                                        <td class="p-4 whitespace-nowrap"
+                                                            x-text="volunteer.volunteer_name">
+                                                        </td>
+                                                        <td class="p-4 whitespace-nowrap"
+                                                            x-text="volunteer.date_of_birth || 'N/A'"></td>
+                                                        <td class="p-4 whitespace-nowrap">
+                                                            <span
+                                                                class="inline-flex overflow-hidden rounded-radius border-success px-1 py-0.5 text-xs font-medium"
+                                                                :class="volunteer.is_certified ? 'text-success bg-success/10' : 'text-danger bg-danger/10'"
+                                                                x-text="volunteer.is_certified ? 'Si' : 'No'"></span>
+                                                        </td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div x-cloak x-show="showEditUserModal" x-transition.opacity.duration.200ms
+        x-trap.inert.noscroll="showEditUserModal" x-on:keydown.esc.window="showEditUserModal = false"
+        x-on:click.self="showEditUserModal = false"
+        class="fixed inset-0 z-30 flex items-end justify-center bg-black/20 p-4 pb-8 backdrop-blur-md sm:items-center lg:p-8"
+        role="dialog" aria-modal="true" aria-labelledby="defaultModalTitle">
+        <!-- Modal Dialog -->
+        <div x-show="showEditUserModal"
+            x-transition:enter="transition ease-out duration-200 delay-100 motion-reduce:transition-opacity"
+            x-transition:enter-start="opacity-0 -translate-y-8" x-transition:enter-end="opacity-100 translate-y-0"
+            class="flex w-full max-w-xl flex-col gap-4 overflow-hidden rounded-radius border border-outline bg-surface text-on-surface dark:border-outline-dark dark:bg-surface-dark-alt dark:text-on-surface-dark">
+            <!-- Dialog Header -->
+            <div
+                class="flex items-center justify-between border-b border-outline bg-surface-alt/60 p-4 dark:border-outline-dark dark:bg-surface-dark/20">
+                <h3 id="defaultModalTitle"
+                    class="font-semibold tracking-wide text-on-surface-strong dark:text-on-surface-dark-strong">Modifica
+                    profilo</h3>
+                <button x-on:click="showEditUserModal = false" aria-label="close modal">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <form @submit.prevent="updateUser()">
+                <!-- Dialog Body -->
+                <div class="px-4 pb-8 grid gap-4 md:grid-cols-2">
+                    <div class="flex w-full col-span-2 flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_user_username" class="w-fit pl-0.5 text-sm">Username</label>
+                        <input id="form_user_username" type="text"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Username" x-model="userEditForm.username" required />
+                    </div>
+                    <div class="flex w-full col-span-2 flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_user_email" class="w-fit pl-0.5 text-sm">Email</label>
+                        <input id="form_user_email" type="text"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Email" x-model="userEditForm.email" required />
+                    </div>
+                    <div class="flex w-full col-span-2 flex-col gap-1 text-on-surface dark:text-on-surface-dark">
+                        <label for="form_user_password" class="w-fit pl-0.5 text-sm">Nuova password (lascia vuoto per
+                            mantenere)</label>
+                        <input id="form_user_password" type="password"
+                            class="w-full rounded-radius border border-outline bg-surface-alt px-2 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-75 dark:border-outline-dark dark:bg-surface-dark-alt/50 dark:focus-visible:outline-primary-dark"
+                            placeholder="Nuova password" x-model="userEditForm.password" />
+                    </div>
+                </div>
+                <!-- Dialog Footer -->
+                <div
+                    class="flex flex-col-reverse justify-between gap-2 border-t border-outline bg-surface-alt/60 p-4 dark:border-outline-dark dark:bg-surface-dark/20 sm:flex-row sm:items-center md:justify-end">
+                    <button x-on:click="showEditUserModal = false" type="button"
+                        class="whitespace-nowrap rounded-radius px-4 py-2 text-center text-sm font-medium tracking-wide text-on-surface transition hover:opacity-75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 dark:text-on-surface-dark dark:focus-visible:outline-primary-dark">
+                        Annulla
+                    </button>
+                    <button :disabled="loading" type="submit"
+                        class="whitespace-nowrap rounded-radius bg-primary border border-primary dark:border-primary-dark px-4 py-2 text-center text-sm font-medium tracking-wide text-on-primary transition hover:opacity-75 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 dark:bg-primary-dark dark:text-on-primary-dark dark:focus-visible:outline-primary-dark">
+                        Salva
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>
