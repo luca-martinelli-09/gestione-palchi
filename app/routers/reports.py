@@ -4,7 +4,9 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_admin
 from app.database.base import get_db
+from app.models.auth import User
 from app.models import Association, Event, EventAssociation
 from app.models.event import EventStatus
 from app.schemas.reports import (
@@ -26,6 +28,7 @@ async def get_reports(
         False, description="Include detailed earnings per event"
     ),
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     # Base query for events
     events_query = db.query(Event)
@@ -146,6 +149,7 @@ async def get_association_earnings(
     association_id: int,
     status_filter: Optional[EventStatus] = Query(None, alias="status"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     # Verify association exists
     association = db.query(Association).filter(Association.id == association_id).first()
@@ -214,6 +218,7 @@ async def get_association_earnings(
 async def get_pro_loco_earnings(
     status_filter: Optional[EventStatus] = Query(None, alias="status"),
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
 ):
     events_query = db.query(Event)
     if status_filter:

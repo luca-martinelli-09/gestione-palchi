@@ -572,11 +572,19 @@
                                 </template>
                             </select>
                         </div>
-                        <button type="button" @click="showEventModal = true; eventForm = {...eventFormDefaults}"
-                            class="inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-primary border border-primary dark:border-primary-dark px-4 py-2 text-sm font-medium tracking-wide text-on-primary transition hover:opacity-75 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-primary-dark dark:text-on-primary-dark dark:focus-visible:outline-primary-dark">
-                            <span class="material-symbols-outlined">add</span>
-                            <span>Nuovo</span>
-                        </button>
+                        <div class="flex gap-2">
+                            <button type="button" @click="downloadEventsCSV()"
+                                class="inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-surface-alt border border-surface-alt px-4 py-2 text-sm font-medium tracking-wide text-on-surface-strong transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-surface-alt active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-surface-dark-alt dark:border-surface-dark-alt dark:text-on-surface-dark-strong dark:focus-visible:outline-surface-dark-alt">
+                                <span class="material-symbols-outlined text-sm">download</span>
+                                <span class="text-sm">Scarica CSV</span>
+                            </button>
+                            <button type="button" @click="showEventModal = true; eventForm = {...eventFormDefaults}"
+                                x-show="canAdmin()"
+                                class="inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-primary border border-primary dark:border-primary-dark px-4 py-2 text-sm font-medium tracking-wide text-on-primary transition hover:opacity-75 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-primary-dark dark:text-on-primary-dark dark:focus-visible:outline-primary-dark">
+                                <span class="material-symbols-outlined">add</span>
+                                <span>Nuovo</span>
+                            </button>
+                        </div>
                     </div>
                     <div
                         class="overflow-hidden w-full overflow-x-auto rounded-radius border border-outline dark:border-outline-dark">
@@ -645,11 +653,13 @@
                                                 <span class="material-symbols-outlined !text-lg">groups</span>
                                             </button>
                                             <button type="button"
+                                                x-show="canAdmin()"
                                                 class="me-1 bg-transparent rounded-radius font-medium tracking-wide text-secondary transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:text-secondary-dark dark:focus-visible:outline-secondary-dark"
                                                 @click="editEvent(event)">
                                                 <span class="material-symbols-outlined !text-lg">edit</span>
                                             </button>
                                             <button type="button"
+                                                x-show="canAdmin()"
                                                 class="me-1 bg-transparent rounded-radius font-medium tracking-wide text-danger transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:text-danger-dark dark:focus-visible:outline-danger-dark"
                                                 @click="deleteEvent(event.id)">
                                                 <span class="material-symbols-outlined !text-lg">delete</span>
@@ -680,6 +690,7 @@
                         <div></div>
                         <button type="button"
                             @click="showAssociationModal = true; associationForm = {...associationFormDefaults}"
+                            x-show="canAdmin()"
                             class="inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-primary border border-primary dark:border-primary-dark px-4 py-2 text-sm font-medium tracking-wide text-on-primary transition hover:opacity-75 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-primary-dark dark:text-on-primary-dark dark:focus-visible:outline-primary-dark">
                             <span class="material-symbols-outlined">add</span>
                             <span>Nuova</span>
@@ -716,16 +727,19 @@
                                         <td class="p-4 whitespace-nowrap" x-text="association.volunteers?.length"></td>
                                         <td class="p-4 whitespace-nowrap">
                                             <button type="button"
+                                                x-show="canAdmin()"
                                                 class="me-1 bg-transparent rounded-radius font-medium tracking-wide text-secondary transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:text-secondary-dark dark:focus-visible:outline-secondary-dark"
                                                 @click="manageVolunteers(association)">
                                                 <span class="material-symbols-outlined !text-lg">groups</span>
                                             </button>
                                             <button type="button"
+                                                x-show="canAdmin()"
                                                 class="me-1 bg-transparent rounded-radius font-medium tracking-wide text-secondary transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-secondary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:text-secondary-dark dark:focus-visible:outline-secondary-dark"
                                                 @click="editAssociation(association)">
                                                 <span class="material-symbols-outlined !text-lg">edit</span>
                                             </button>
                                             <button type="button"
+                                                x-show="canAdmin()"
                                                 class="me-1 bg-transparent rounded-radius font-medium tracking-wide text-danger transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:text-danger-dark dark:focus-visible:outline-danger-dark"
                                                 @click="deleteAssociation(association.id)">
                                                 <span class="material-symbols-outlined !text-lg">delete</span>
@@ -1059,6 +1073,7 @@
                             aria-hidden="true"></div>
                     </label>
                     <button type="submit" :disabled="loading"
+                        x-show="canAdmin()"
                         class="w-min inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-primary border border-primary dark:border-primary-dark px-4 py-2 text-sm font-medium tracking-wide text-on-primary transition hover:opacity-75 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-primary-dark dark:text-on-primary-dark dark:focus-visible:outline-primary-dark">
                         <span class="material-symbols-outlined">add</span>
                         <span>Aggiungi</span>
@@ -1091,6 +1106,7 @@
                                     </td>
                                     <td class="p-4 whitespace-nowrap">
                                         <button type="button"
+                                            x-show="canAdmin()"
                                             class="me-1 bg-transparent rounded-radius font-medium tracking-wide text-danger transition hover:opacity-75 text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:text-danger-dark dark:focus-visible:outline-danger-dark"
                                             @click="deleteVolunteer(volunteer.id)">
                                             <span class="material-symbols-outlined !text-lg">delete</span>
@@ -1182,6 +1198,7 @@
                     </div>
 
                     <button type="submit" :disabled="loading"
+                        x-show="canAdmin()"
                         class="w-min inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-primary border border-primary dark:border-primary-dark px-4 py-2 text-sm font-medium tracking-wide text-on-primary transition hover:opacity-75 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-primary-dark dark:text-on-primary-dark dark:focus-visible:outline-primary-dark">
                         <span class="material-symbols-outlined">add</span>
                         <span>Aggiungi</span>
@@ -1211,6 +1228,7 @@
                                 :aria-labelledby="`controls-assignments-${assignment.id}`" x-collapse>
                                 <div class="p-4 text-sm sm:text-base text-pretty">
                                     <button type="button" @click="removeAssociationFromEvent(assignment.association_id)"
+                                        x-show="canAdmin()"
                                         class="inline-flex justify-center items-center gap-2 whitespace-nowrap rounded-radius bg-danger border border-danger dark:border-danger px-4 py-2 text-sm font-medium tracking-wide text-on-danger transition hover:opacity-75 text-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger active:opacity-100 active:outline-offset-0 disabled:opacity-75 disabled:cursor-not-allowed dark:bg-danger dark:text-on-danger dark:focus-visible:outline-danger">
                                         <span class="material-symbols-outlined">delete</span>
                                         Rimuovi associazione

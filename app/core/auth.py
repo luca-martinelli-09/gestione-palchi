@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.config import Settings, get_settings
 from app.core.exceptions import AuthenticationException, AuthorizationException
 from app.database.base import get_db
-from app.models.auth import User
+from app.models.auth import User, UserRole
 
 # Initialize password context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -105,6 +105,7 @@ class AuthService:
                     "email": user.email,
                     "is_active": user.is_active,
                     "is_superuser": user.is_superuser,
+                    "role": user.role.value if user.role else "viewer",
                     "hashed_password": user.hashed_password,
                 }
                 self._set_cache(user_cache_key, user_data, expire=300)  # 5 minutes
@@ -134,6 +135,7 @@ class AuthService:
                 "email": user.email,
                 "is_active": user.is_active,
                 "is_superuser": user.is_superuser,
+                "role": user.role.value if user.role else "viewer",
                 "hashed_password": user.hashed_password,
             }
             self._set_cache(user_cache_key, user_data, expire=300)
@@ -270,6 +272,25 @@ def get_current_user_optional(
         return get_current_user(credentials, db)
     except AuthenticationException:
         return None
+
+
+def require_admin(current_user: User = Depends(get_current_active_user)) -> User:
+    """Require admin or superadmin role."""
+    if current_user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN]:
+        raise AuthorizationException("🔒 Privilegi di amministratore richiesti")
+    return current_user
+
+
+def require_superadmin(current_user: User = Depends(get_current_active_user)) -> User:
+    """Require superadmin role."""
+    if current_user.role != UserRole.SUPERADMIN:
+        raise AuthorizationException("👑 Privilegi di superamministratore richiesti")
+    return current_user
+
+
+def require_viewer_or_above(current_user: User = Depends(get_current_active_user)) -> User:
+    """Require at least viewer role (all authenticated users)."""
+    return current_user
 
 
 # Backward compatibility

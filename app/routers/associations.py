@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, Query, status
 
-from app.core.auth import get_current_active_user
+from app.core.auth import require_admin, require_viewer_or_above
 from app.models.auth import User
 from app.schemas.association import Association as AssociationSchema
 from app.schemas.association import AssociationCreate, AssociationUpdate
@@ -25,7 +25,7 @@ def get_association_service(
 async def create_association(
     association: AssociationCreate,
     association_service: AssociationService = Depends(get_association_service),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_admin),
 ):
     """Create a new association."""
     return association_service.create_association(association)
@@ -36,7 +36,7 @@ async def get_associations(
     skip: int = 0,
     limit: int = Query(100, le=1000),  # Limit max to prevent overload
     association_service: AssociationService = Depends(get_association_service),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_viewer_or_above),
 ):
     """Get associations with pagination."""
     return association_service.get_associations(skip=skip, limit=limit)
@@ -46,7 +46,7 @@ async def get_associations(
 async def get_association(
     association_id: int,
     association_service: AssociationService = Depends(get_association_service),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_viewer_or_above),
 ):
     """Get association by ID."""
     return association_service.get_association_by_id(association_id)
@@ -57,7 +57,7 @@ async def update_association(
     association_id: int,
     association_update: AssociationUpdate,
     association_service: AssociationService = Depends(get_association_service),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_admin),
 ):
     """Update an existing association."""
     return association_service.update_association(association_id, association_update)
@@ -67,7 +67,7 @@ async def update_association(
 async def delete_association(
     association_id: int,
     association_service: AssociationService = Depends(get_association_service),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_admin),
 ):
     """Delete an association."""
     association_service.delete_association(association_id)
@@ -78,7 +78,7 @@ async def delete_association(
 async def get_association_volunteers(
     association_id: int,
     association_service: AssociationService = Depends(get_association_service),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_viewer_or_above),
 ):
     """Get volunteers for a specific association."""
     return association_service.get_association_volunteers(association_id)
@@ -93,7 +93,7 @@ async def create_volunteer(
     association_id: int,
     volunteer: VolunteerCreate,
     association_service: AssociationService = Depends(get_association_service),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_admin),
 ):
     """Create a new volunteer for an association."""
     return association_service.create_volunteer(association_id, volunteer)
@@ -107,7 +107,7 @@ async def update_volunteer(
     volunteer_id: int,
     volunteer_update: VolunteerUpdate,
     association_service: AssociationService = Depends(get_association_service),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_admin),
 ):
     """Update an existing volunteer."""
     return association_service.update_volunteer(
@@ -123,7 +123,7 @@ async def delete_volunteer(
     association_id: int,
     volunteer_id: int,
     association_service: AssociationService = Depends(get_association_service),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_admin),
 ):
     """Delete a volunteer."""
     association_service.delete_volunteer(association_id, volunteer_id)

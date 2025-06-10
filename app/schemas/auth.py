@@ -1,6 +1,6 @@
 from typing import Optional
-
 from pydantic import BaseModel
+from app.models.auth import UserRole
 
 
 class UserBase(BaseModel):
@@ -8,6 +8,7 @@ class UserBase(BaseModel):
     email: str
     is_active: bool = True
     is_superuser: bool = False
+    role: UserRole = UserRole.VIEWER
 
 
 class UserCreate(UserBase):
@@ -20,6 +21,7 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
+    role: Optional[UserRole] = None
 
 
 class User(UserBase):

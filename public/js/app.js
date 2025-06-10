@@ -7,29 +7,37 @@ document.addEventListener("alpine:init", () => {
     currentPage: 'dashboard',
     authMode: 'login',
 
-    // Menu
-    primaryMenu: [
-      {
-        title: "Dashboard",
-        icon: "home",
-        route: "dashboard"
-      },
-      {
-        title: "Eventi",
-        icon: "event",
-        route: "events"
-      },
-      {
-        title: "Associazioni",
-        icon: "groups",
-        route: "associations"
-      },
-      {
-        title: "Riepilogo",
-        icon: "leaderboard",
-        route: "reports"
+    // Menu - computed dynamically based on user role
+    get primaryMenu() {
+      const baseMenu = [
+        {
+          title: "Dashboard",
+          icon: "home",
+          route: "dashboard"
+        },
+        {
+          title: "Eventi",
+          icon: "event",
+          route: "events"
+        },
+        {
+          title: "Associazioni",
+          icon: "groups",
+          route: "associations"
+        }
+      ];
+
+      // Only show reports for admin and superadmin users
+      if (this.canAdmin()) {
+        baseMenu.push({
+          title: "Riepilogo",
+          icon: "leaderboard",
+          route: "reports"
+        });
       }
-    ],
+
+      return baseMenu;
+    },
 
     // Toast
     toast: {
@@ -672,6 +680,19 @@ document.addEventListener("alpine:init", () => {
       };
     },
 
+    // Role-based access control helpers
+    canAdmin() {
+      return this.user && (this.user.role === 'admin' || this.user.role === 'superadmin');
+    },
+
+    canSuperAdmin() {
+      return this.user && this.user.role === 'superadmin';
+    },
+
+    canViewOnly() {
+      return this.user && this.user.role === 'viewer';
+    },
+
     formatDate(dateString) {
       if (!dateString) return '';
       return new Date(dateString).toLocaleDateString('it-IT', {
@@ -781,6 +802,39 @@ document.addEventListener("alpine:init", () => {
       this.showToast('🔄 Aggiornamento dati...', 'info');
       await this.refreshCurrentPageData();
       this.showToast('✅ Dati aggiornati', 'success');
+    },
+
+    async downloadEventsCSV() {
+      try {
+        const params = new URLSearchParams();
+        if (this.eventFilters.status) {
+          params.append('status', this.eventFilters.status);
+        }
+        
+        const response = await fetch(this.apiUrl + '/events/export/csv?' + params.toString(), {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error('Errore durante il download del CSV');
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'eventi.csv';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        this.showToast('✅ CSV scaricato con successo', 'success');
+      } catch (error) {
+        this.showToast('Errore nel download del CSV: ' + error.message, 'error');
+      }
     }
   }))
 });
